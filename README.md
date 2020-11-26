@@ -18,7 +18,7 @@ It must accept and serve at least 100k RPS, and should be capable to attend 200k
 
 ## Index
 
-- Description of the architecture
+- [Description of the architecture](architecture.md)
 - Load tests
 - Monitoring
 - Evolution
