@@ -1,0 +1,117 @@
+Probamos con un servidor en local
+
+server en local:
+server-remote contra Alex, una instancia: funciona
+server-remote-dos contra alex, (segunda instancia): funciona
+
+Prueba de carga contra una instancia local
+
+/mnt/data/src> autocannon -d 10 -c 100 -p 10 http://localhost:7017/turno/autocannon
+Running 10s test @ http://localhost:7017/turno/autocannon
+100 connections with 10 pipelining factor
+
+┌─────────┬──────┬──────┬───────┬───────┬─────────┬──────────┬────────┐
+│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%   │ Avg     │ Stdev    │ Max    │
+├─────────┼──────┼──────┼───────┼───────┼─────────┼──────────┼────────┤
+│ Latency │ 0 ms │ 0 ms │ 38 ms │ 44 ms │ 5.05 ms │ 12.21 ms │ 246 ms │
+└─────────┴──────┴──────┴───────┴───────┴─────────┴──────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev  │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼────────┼─────────┤
+│ Req/Sec   │ 9391    │ 9391    │ 19743   │ 21679   │ 18731.6 │ 3306.7 │ 9386    │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼────────┼─────────┤
+│ Bytes/Sec │ 1.87 MB │ 1.87 MB │ 3.93 MB │ 4.32 MB │ 3.73 MB │ 658 kB │ 1.87 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+
+187k requests in 10.1s, 37.3 MB read
+
+El objetivo son 100k RPS, y obtenemos sólo 187k
+
+
+Necesitaríamos al menos 5 servidores, si hubiera un escalado lineal, decidimos con una solución en cloud
+
+Primera prueba en un servidor de AWS:
+➜  ~ autocannon -d 10 -c 100 -p 10 http://35.180.34.158:7017/turno/autocannon
+Running 10s test @ http://35.180.34.158:7017/turno/autocannon
+100 connections with 10 pipelining factor
+
+┌─────────┬──────┬──────┬───────┬───────┬──────┬──────────┬────────┐
+│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%   │ Avg  │ Stdev    │ Max    │
+├─────────┼──────┼──────┼───────┼───────┼──────┼──────────┼────────┤
+│ Latency │ 0 ms │ 0 ms │ 28 ms │ 34 ms │ 7 ms │ 12.58 ms │ 218 ms │
+└─────────┴──────┴──────┴───────┴───────┴──────┴──────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Req/Sec   │ 6483    │ 6483    │ 14719   │ 15271   │ 14029.4 │ 2534.78 │ 6481    │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Bytes/Sec │ 1.29 MB │ 1.29 MB │ 2.93 MB │ 3.04 MB │ 2.79 MB │ 505 kB  │ 1.29 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+
+140k requests in 10.17s, 27.9 MB read
+
+14k reqs/sec
+
+Vamos a levantar un segundo servidor
+
+Necesitamos un load balancer para repartir las peticiones entre los dos servidores. Pretendemos confirmar que duplicamos las RPS
+
+Montamos un LB de aplicación, apuntando a un target group con un único servidor.
+
+Balanceador con una instancia
+➜  ~ autocannon -d 10 -c 100 -p 10 http://turnomatic-balance-1545372966.eu-west-3.elb.amazonaws.com/turno/balance-one-instance
+Running 10s test @ http://turnomatic-balance-1545372966.eu-west-3.elb.amazonaws.com/turno/balance-one-instance
+100 connections with 10 pipelining factor
+
+┌─────────┬──────┬──────┬───────┬───────┬─────────┬─────────┬────────┐
+│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%   │ Avg     │ Stdev   │ Max    │
+├─────────┼──────┼──────┼───────┼───────┼─────────┼─────────┼────────┤
+│ Latency │ 4 ms │ 8 ms │ 14 ms │ 21 ms │ 8.42 ms │ 5.82 ms │ 211 ms │
+└─────────┴──────┴──────┴───────┴───────┴─────────┴─────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬──────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg      │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┼─────────┤
+│ Req/Sec   │ 7887    │ 7887    │ 11695   │ 11919   │ 11262.37 │ 1102.84 │ 7885    │
+├───────────┼─────────┼─────────┼─────────┼─────────┼──────────┼─────────┼─────────┤
+│ Bytes/Sec │ 1.43 MB │ 1.43 MB │ 2.13 MB │ 2.17 MB │ 2.05 MB  │ 204 kB  │ 1.43 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴──────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+
+124k requests in 11.16s, 22.6 MB read
+
+Vemos que penaliza un 25% tener un LB delante de una única instancia.
+Puede tener sentido porque las peticiones tienen muy poca latencia, así que penaliza la capa extra.
+
+Tratamos de confirmar que añadiendo otro servidor en el target group se "duplican" las RPS
+
+Con dos instancias tras el balanceador no ha mejorado al doble el número de requests por segundo
+
+➜  ~ autocannon -d 10 -c 100 -p 10 http://turnomatic-balance-1545372966.eu-west-3.elb.amazonaws.com/turno/balance-two-instances
+Running 10s test @ http://turnomatic-balance-1545372966.eu-west-3.elb.amazonaws.com/turno/balance-two-instances
+100 connections with 10 pipelining factor
+
+┌─────────┬──────┬──────┬───────┬───────┬─────────┬─────────┬────────┐
+│ Stat    │ 2.5% │ 50%  │ 97.5% │ 99%   │ Avg     │ Stdev   │ Max    │
+├─────────┼──────┼──────┼───────┼───────┼─────────┼─────────┼────────┤
+│ Latency │ 0 ms │ 6 ms │ 12 ms │ 16 ms │ 6.31 ms │ 6.92 ms │ 339 ms │
+└─────────┴──────┴──────┴───────┴───────┴─────────┴─────────┴────────┘
+┌───────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬─────────┐
+│ Stat      │ 1%      │ 2.5%    │ 50%     │ 97.5%   │ Avg     │ Stdev   │ Min     │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Req/Sec   │ 10279   │ 10279   │ 14935   │ 16703   │ 14802   │ 1598.85 │ 10278   │
+├───────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┼─────────┤
+│ Bytes/Sec │ 1.89 MB │ 1.89 MB │ 2.75 MB │ 3.07 MB │ 2.72 MB │ 294 kB  │ 1.89 MB │
+└───────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴─────────┘
+
+Req/Bytes counts sampled once per second.
+
+148k requests in 10.15s, 27.2 MB read
+
+Con tres instancias no mejora el rendimiento y todo apunta a que es el balanceador de carga porque haciendo peticiones simultáneas a los3 servidores obtenemos 15000 requests por segundo en cada servidor, en total 45000 requests por segundo
+
+
