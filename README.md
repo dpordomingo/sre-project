@@ -22,6 +22,7 @@ It must accept and serve at least 100k RPS, and should be capable to attend 200k
 - [Load tests](load-tests.md)
 - [Balancing](balancing.md)
 - [Monitoring](monitoring.md)
+  - [Instrumenting with honeycomb.io](./docs/monitoring/honeycomb.md)
 - [Scalability report](scalability-report.md)
 - Incidents
   - [Framework to deal with incidents](./docs/incidents/README.md)
