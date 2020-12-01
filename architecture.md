@@ -11,7 +11,7 @@ Disponemos de una instancia de tipo t2.small (1 vCPU y 2 GB RAM) y conectamos co
 
 Disponemos de varias instancias de tipo t2.small (1 vCPU y 2 GB RAM) tras un balanceador de carga de AWS, conectamos con un redis centralizado en el servidor "service.pinchito.es"
 
-![Arquitectura en clúster con balanceador de AWS](architecture-server-cluster-and-AWS-load-balancer.png)
+![Arquitectura en clúster con balanceador de AWS](./docs/images/counter.png)
 
 ## Servidor en clúster con balanceo de carga por DNS
 
